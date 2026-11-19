@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Earth - WebGL</title>
+  <style>
+    body {
+      margin: 0;
+      background: #080d18;
+      display: grid;
+      place-items: center;
+      height: 100vh;
+    }
+    canvas {
+      width: 800px;
+      height: 600px;
+      max-width: 100%;
+      border: 1px solid #334155;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="glCanvas" width="800" height="600"></canvas>
+
+  <!-- 교수님 예제처럼 셰이더를 HTML의 script 태그에 둡니다. -->
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec4 aPosition;
+    attribute vec3 aNormal;
+    attribute vec4 aColor;
+
+    uniform mat4 uModelView;
+    uniform mat4 uProjection;
+
+    varying vec3 vNormal;
+    varying vec4 vColor;
+
+    void main() {
+      gl_Position = uProjection * uModelView * aPosition;
+      vNormal = mat3(uModelView) * aNormal;
+      vColor = aColor;
+    }
+  </script>
+
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    precision mediump float;
+
+    varying vec3 vNormal;
+    varying vec4 vColor;
+
+    void main() {
+      vec3 lightDirection = normalize(vec3(0.6, 0.8, 1.0));
+      float diffuse = 0.35 + 0.65 * max(dot(normalize(vNormal), lightDirection), 0.0);
+      gl_FragColor = vec4(vColor.rgb * diffuse, vColor.a);
+    }
+  </script>
+
+  <!-- 교수님 제공 공통 라이브러리: 수정하지 않고 그대로 재사용합니다. -->
+  <script src="Common/MV.js"></script>
+  <script src="Common/webgl-utils.js"></script>
+  <script src="Common/initShaders.js"></script>
+  <script src="earth.js"></script>
+</body>
+</html>
