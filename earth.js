@@ -1,6 +1,6 @@
 "use strict";
 
-// 새로 작성한 부분: 실제 고도를 반영한 위도·경도 구체 Mesh를 생성합니다.
+// 새로 작성한 부분: 실제 고도를 반영한 위도·경도 구체 Mesh 생성
 var EARTH_RADIUS_METERS = 6371000.0;
 var elevationExaggeration = 20.0;
 
@@ -14,7 +14,7 @@ function createSphere(latitudeBands, longitudeBands) {
     var theta = latitudeIndex * Math.PI / latitudeBands;
     var latitude = 90.0 - latitudeIndex * 180.0 / latitudeBands;
     var longitude = longitudeIndex * 360.0 / longitudeBands - 180.0;
-    // 두 극점은 경도별 고도 차이로 갈라지지 않도록 하나의 반지름을 공유합니다.
+    // 두 극점의 경도별 고도 차이 방지를 위한 반지름 공유
     var elevationLongitude = (latitudeIndex === 0 || latitudeIndex === latitudeBands)
       ? -180.0 : longitude;
     var elevation = getElevationInterpolated(latitude, elevationLongitude);
@@ -52,7 +52,7 @@ function createSphere(latitudeBands, longitudeBands) {
       var uvC = texCoord(lat + 1, lon + 1, latitudeBands, longitudeBands);
       var uvD = texCoord(lat, lon + 1, latitudeBands, longitudeBands);
 
-      // 위도/경도 매개화에서 a,b,c는 안쪽을 향하므로 외향 순서로 뒤집습니다.
+      // 위도/경도 매개화에서 a,b,c의 외향 순서 뒤집기
       addTriangle(a, d, c, uvA, uvD, uvC, color);
       addTriangle(a, c, b, uvA, uvC, uvB, color);
     }
@@ -63,10 +63,10 @@ function createSphere(latitudeBands, longitudeBands) {
   }
 
   function addTriangle(a, b, c, uvA, uvB, uvC, color) {
-    // 고도 변형 후의 실제 변 두 개로 외향 면 법선을 다시 계산합니다.
+    // 고도 변형 후 실제 두 변을 이용한 외향 면 법선 재계산
     var normal = cross(subtract(b, a), subtract(c, a));
-    // 극점에서는 두 삼각형 정점이 같은 위치라 외적이 영벡터가 됩니다.
-    // 이 경우에는 극점의 방사 방향을 사용해 NaN 법선을 방지합니다.
+    // 극점에서 두 삼각형 정점이 같은 위치인 경우 외적이 영벡터가 됨
+    // 극점의 방사 방향 사용을 통한 NaN 법선 방지
     if (dot(normal, normal) < 1.0e-12) {
       normal = normalize(add(add(a, b), c));
     } else {
@@ -89,7 +89,7 @@ function createSphere(latitudeBands, longitudeBands) {
   };
 }
 
-// 교수님 예제 스타일의 초기화/렌더링. WebGLUtils, initShaders, MV.js는 제공 파일입니다.
+// 교수님 예제 스타일의 초기화/렌더링. WebGLUtils, initShaders, MV.js는 제공 파일
 var canvas;
 var gl;
 var program;
@@ -162,16 +162,33 @@ function initializeEarthTexture() {
   earthTexture = gl.createTexture();
   var image = new Image();
   image.onload = function () {
-    gl.bindTexture(gl.TEXTURE_2D, earthTexture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    textureReady = true;
-    textureStatus.textContent = "텍스처 준비 완료";
+    try {
+      // 텍스처 업로드 이전에 남아 있던 WebGL 오류와 구분
+      while (gl.getError() !== gl.NO_ERROR) {
+        // 이전 렌더링 단계의 오류 비우기
+      }
+      gl.bindTexture(gl.TEXTURE_2D, earthTexture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      // HTMLImageElement 텍스처의 표준 RGBA 형식 업로드
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      var textureError = gl.getError();
+      textureReady = textureError === gl.NO_ERROR;
+      textureStatus.textContent = textureReady
+        ? "텍스처 준비 완료"
+        : "텍스처 업로드 실패 (WebGL " + textureError + "): 고도 색상 사용";
+      if (!textureReady) {
+        console.error("Unable to upload Earth texture. WebGL error:", textureError);
+      }
+    } catch (error) {
+      textureReady = false;
+      textureStatus.textContent = "텍스처 업로드 예외 (" + error.name + "): 고도 색상 사용";
+      console.error("Unable to upload Earth texture:", error);
+    }
   };
   image.onerror = function () {
     textureReady = false;
@@ -188,11 +205,11 @@ function render() {
   var modelView = mult(view, rotateY(rotation));
   var projection = perspective(45.0, canvas.width / canvas.height, 0.1, 10.0);
 
-  // MV.js 행렬을 GPU에 전달할 때는 제공 함수 flatten()을 사용합니다.
+  // MV.js 행렬의 GPU 전달 시 제공 함수 flatten() 사용
   gl.uniformMatrix4fv(modelViewLocation, false, flatten(modelView));
   gl.uniformMatrix4fv(projectionLocation, false, flatten(projection));
   gl.uniform1i(textureLocation, 0);
-  // 텍스처가 로드되면 항상 사용하고, 실패한 경우에만 고도 색상으로 fallback합니다.
+  // 텍스처 로드 시 사용, 실패 시 고도 색상으로 fallback
   gl.uniform1i(useTextureLocation, textureReady ? 1 : 0);
   if (textureReady) {
     gl.activeTexture(gl.TEXTURE0);

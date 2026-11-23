@@ -1,5 +1,5 @@
-// NOAA ETOPO 2022, preprocessed to a 1-degree lookup grid.
-// latitude index: latitude + 90; longitude index: longitude + 180.
+// NOAA ETOPO 2022의 1° 조회 격자 전처리 데이터
+// 위도 인덱스: latitude + 90, 경도 인덱스: longitude + 180
 const ELEVATION_MIN_LATITUDE = -90;
 const ELEVATION_MAX_LATITUDE = 90;
 const ELEVATION_MIN_LONGITUDE = -180;
@@ -199,14 +199,14 @@ function getElevation(latitude, longitude) {
   return ELEVATION_DATA[latitudeIndex * ELEVATION_LONGITUDE_SIZE + longitudeIndex];
 }
 
-// 새로 작성한 부분: 네 개의 1° 격자점을 이용한 쌍선형 보간입니다.
+  // 새로 작성한 부분: 네 개의 1° 격자점을 이용한 쌍선형 보간
 function getElevationInterpolated(latitude, longitude) {
   if (latitude < ELEVATION_MIN_LATITUDE || latitude > ELEVATION_MAX_LATITUDE ||
       longitude < ELEVATION_MIN_LONGITUDE || longitude > ELEVATION_MAX_LONGITUDE) {
     throw new RangeError("latitude must be -90..90 and longitude must be -180..180");
   }
 
-  // 정수 좌표는 기존 조회 함수와 완전히 같은 값을 반환합니다.
+  // 정수 좌표에서 기존 조회 함수와 같은 값 반환
   if (Number.isInteger(latitude) && Number.isInteger(longitude)) {
     return getElevation(latitude, longitude);
   }
@@ -216,7 +216,7 @@ function getElevationInterpolated(latitude, longitude) {
   var latitudeIndex1 = Math.min(latitudeIndex0 + 1, 180);
   var latitudeWeight = latitude - latitudeBase;
 
-  // 180°는 -180°와 같은 경도입니다.
+  // 180°와 -180°의 동일 경도 처리
   var wrappedLongitude = longitude === 180 ? -180 : longitude;
   var longitudeBase = Math.floor(wrappedLongitude);
   var longitudeIndex0 = longitudeBase + 180;
